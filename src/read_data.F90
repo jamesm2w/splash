@@ -287,6 +287,14 @@ subroutine select_data_format(string_in,ierr)
    read_data=> read_data_vtk
    set_labels=>set_labels_vtk
 
+ ! Make H5PART available of H5PART_DIR defined
+#ifdef H5PART_DIR
+ case('h5part')
+   print "(a)",  'H5Part Selected :) '
+   read_data=>read_data_h5part
+   set_labels=>set_labels_h5part
+#endif
+
  ! Make the hdf5 data formats available if SPLASH has been compiled with HDF5
 #ifdef HDF5
  case('phantom_hdf5', 'sphng_hdf5', 'phantomsph_hdf5')
@@ -326,13 +334,6 @@ subroutine select_data_format(string_in,ierr)
  case('pbob')
    read_data=>read_data_pbob
    set_labels=>set_labels_pbob
-#endif
-
- ! Make H5PART available of H5PART_DIR defined
-#ifdef H5PART_DIR
- case('h5part')
-   read_data=>read_data_h5part
-   set_labels=>set_labels_h5part
 #endif
 
  case default

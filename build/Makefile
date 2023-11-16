@@ -369,7 +369,7 @@ READFILES_FITS= write_fits.f90 read_data_fits.f90
 
 READFILES_PBOB= read_data_pbob_utils.c read_data_pbob.f90 read_pbob.c read_particle.c
 
-READFILES_H5PART= H5PartF.c H5PartAttribF.c H5Part.f90 H5PartAttrib.f90
+READFILES_H5PART= H5PartF.c H5PartAttribF.c H5Part.f90 H5PartAttrib.f90 read_data_h5part.f90
 
 RUN_CHECKS=
 
@@ -402,6 +402,10 @@ endif
 
 ifdef H5PART_DIR
   READFILES+=$(READFILES_H5PART)
+  CFLAGS+=$(H5PART_INCLUDE)
+  FFLAGS+=-DH5PART_DIR=$(H5PART_DIR)
+  LDFLAGS+=$(H5PART_LIBS)
+  LDFLAGSLIB+=$(H5PART_LIBS)
   VPATH+=$(H5PART_LIBS) $(HDF5LIBS)
   RUN_CHECKS+=checkh5part
 endif
