@@ -51,6 +51,10 @@ program splash
 !
 !     -------------------------------------------------------------------------
 !     Version history/ Changelog:
+!     3.10.0  : (30/11/23)
+!             --sort flag to sort filenames for comparison plots;
+!             --movie flag to automatically make movie from sequence of files;
+!             giza backend now supports direct output of mp4 movies
 !     3.9.0   : (06/11/23)
 !             follow-the-label column choice, where if a label is selected for plotting
 !             from the first file, it will automagically shift to find the matching label
@@ -555,7 +559,7 @@ program splash
  use geomutils, only:set_coordlabels
  use defaults,  only:defaults_set,defaults_read,defaults_set_360
  use initialise,only:defaults_set_initial
- use limits,    only:read_limits,lim
+ use limits,    only:read_limits,lim,set_limits
  use kernels,   only:ikernel,select_kernel_by_name,select_kernel
  use mainmenu,  only:menu,allowrendering,set_extracols
  use mem_allocation,     only:deallocate_all
@@ -567,7 +571,7 @@ program splash
  use system_utils,       only:lenvironment,renvironment,envlist, &
                               get_environment_or_flag,get_command_option,get_command_flag
  use asciiutils,         only:read_asciifile,basename,match_column,&
-                              reorder_filenames_for_comparison,split,extension
+                              sort_filenames_for_comparison,split,extension
  use write_pixmap,       only:isoutputformat,iwritepixmap,pixmapformat,isinputformat,ireadpixmap,readpixformat
  use convert,            only:convert_all
  use write_sphdata,      only:issphformat
@@ -584,8 +588,8 @@ program splash
  use set_options_from_dataread, only:set_options_dataread
  use exact,              only:ispiral,nfiles_exact=>nfiles,filename_exact
  use multiplot,          only:itrans
- use labels,             only:lenlabel,label,unitslabel,shortlabel
- use limits,             only:set_limits
+ use labels,             only:lenlabel,label,unitslabel,shortlabel,irho
+ use interactive_routines, only:set_movie_mode
  implicit none
  integer :: i,ierr,nargs,ipickx,ipicky,irender,icontour,ivecplot,il
  logical :: ihavereadfilenames,evsplash,doconvert,useall,iexist,use_360,got_format,do_multiplot
@@ -593,7 +597,7 @@ program splash
  character(len=120) :: string,exactfile
  character(len=12)  :: convertformat
  character(len=lenlabel) :: stringx,stringy,stringr,stringc,stringv
- character(len=*), parameter :: version = 'v3.9.0 [6th Nov 2023]'
+ character(len=*), parameter :: version = 'v3.10.0 [30th Nov 2023]'
 
  !
  ! initialise some basic code variables
@@ -678,6 +682,8 @@ program splash
        case('dev','device')
           i = i + 1
           call get_argument(i,device)
+       case('movie','-movie')
+          device = '/mp4'
        case('l')
           i = i + 1
           call get_argument(i,limitsfile)
@@ -938,8 +944,8 @@ program splash
     call guess_format(nfiles,rootname,ierr)
  endif
 
- if (ihavereadfilenames .and. get_command_flag('interleave')) then
-    call reorder_filenames_for_comparison(nfiles,rootname)
+ if (ihavereadfilenames .and. get_command_flag('sort')) then
+    call sort_filenames_for_comparison(nfiles,rootname)
  endif
 
  if (ikernel==0) then
@@ -1021,7 +1027,14 @@ program splash
     ! read plot limits from file (overrides get_data limits settings)
     !
     if (ivegotdata) call read_limits(trim(limitsfile),ierr)
-
+    !
+    ! if device is mp4 auto-render column density in Hollywood mode if nothing is set
+    !
+    if (device == '/mp4' .and. irender == 0) then
+       irender = irho
+       nomenu = .true.
+       if (using_default_options) call set_movie_mode(.false.)
+    endif
     !
     ! use log colour bar by default if more than 3 orders of magnitude range
     ! (and no limits file and using default options)
@@ -1169,6 +1182,7 @@ subroutine print_usage(quit)
  print "(a)",' -c[ontour] column : contoured quantity'
  print "(a)",' -multi            : multiplot'
  print "(a)",' -dev device       : specify plotting device on command line (e.g. -dev /xw)'
+ print "(a)",' --movie           : shortcut for -dev /mp4 to make a movie from plot sequence'
  print "(a)",' --xsec=1.0        : specify location of cross section slice'
  print "(a)",' --kappa=1.0       : specify opacity, and turn on opacity rendering'
  print "(a)",' --anglex=30       : rotate around x axis (similarly --angley, --anglez)'
@@ -1179,6 +1193,7 @@ subroutine print_usage(quit)
  print "(a)",' --track=666       : track particle number 666'
  print "(a)",' --track=maxdens   : track particle at maximum density'
  print "(a)",' --exact=file1,f2  : read and plot exact solution from ascii files file1 and f2'
+ print "(a)",' --sort            : sort filenames for comparison (e.g. snap_000 snap1_000 snap2_000)'
  call print_available_formats('short')
  print "(a)"
  ltemp = issphformat('none')
